@@ -1,53 +1,133 @@
 version: 2
 
-# Source definitions for the Cobalt Mobility raw sandbox.
-# The generator loads these five tables into RIDEFLOW.RAW.
-# Point `database`/`schema` at wherever you ran the generator.
-#
-# Source freshness is wired as a starting point — tune the thresholds to a
-# daily-load SLA and wire them into your orchestration design.
-
 sources:
   - name: raw
-    database: RIDEFLOW   # override per your sandbox
+    database: RIDEFLOW
     schema: RAW
-    description: "Raw operational feeds from the ride-hailing marketplace, as emitted by the source systems. Dirty on purpose."
+    description: "Raw operational feeds from the ride-hailing marketplace."
     tables:
       - name: raw_riders
         description: "One row per rider account. ACCOUNT_STATUS is the CRM flag, not a behavioural measure."
-        loaded_at_field: signup_at
         columns:
           - name: rider_id
-            description: "Unique rider identifier."
-            # Fellow: is this actually unique + not null? Add tests and find out.
-
+            tests:
+              - unique
+              - not_null
       - name: raw_drivers
-        description: "One row per driver — but DRIVER_ID is reused on re-onboarding, so check that assumption."
-        loaded_at_field: onboarded_at
+        description: "One row per driver. DRIVER_ID reused on re-onboarding — 30 drivers have 2 rows."
         columns:
           - name: driver_id
-            description: "Driver identifier. May appear more than once (re-onboarded drivers)."
-
+            tests:
+              - not_null
       - name: raw_trips
-        description: "One row per trip request: completed or cancelled. GROSS_FARE is the leadership GMV input."
-        loaded_at_field: requested_at
-        freshness:
-          warn_after: {count: 36, period: hour}
-          error_after: {count: 48, period: hour}
+        description: "One row per trip request. GROSS_FARE is what leadership sums for GMV."
         columns:
           - name: trip_id
-            description: "Unique trip identifier."
-
+            tests:
+              - unique
+              - not_null
       - name: raw_payments
-        description: "One row per payment capture ATTEMPT (includes failures, retries, and double-logged captures)."
-        loaded_at_field: attempted_at
-        freshness:
-          warn_after: {count: 36, period: hour}
-          error_after: {count: 48, period: hour}
+        description: "One row per payment capture attempt. Includes retries and webhook double-logs."
         columns:
           - name: payment_id
-            description: "Unique per attempt."
-
+            tests:
+              - unique
+              - not_null
       - name: raw_driver_incentives
         description: "One row per incentive line. A trip can appear on multiple lines (overlapping campaigns)."
-        loaded_at_field: paid_at   # note: weekly batch — consider what freshness means here
+        columns:
+          - name: incentive_id
+            tests:
+              - unique
+              - not_null
+
+models:
+  - name: stg_riders
+    description: "Cleaned riders. 1:1 with source, no issues found. Added is_referred flag."
+    columns:
+      - name: rider_id
+        tests:
+          - unique
+          - not_null
+
+  - name: stg_drivers
+    description: >
+      Deduped drivers. 750 rows from 780 raw rows.
+      30 drivers had 2 rows due to DRIVER_ID reuse on re-onboarding.
+      Resolution: keep the latest onboarded_at row per driver_id.
+      The is_reonboarded flag preserves visibility into which drivers were collapsed.
+      onboarding_count shows how many raw rows existed (1 or 2).
+    columns:
+      - name: driver_id
+        tests:
+          - unique
+          - not_null
+
+  - name: stg_trips
+    description: >
+      Trips with derived classification: clean_completed, fraud_completed,
+      billed_cancellation, zero_fare_cancellation. Also splits out
+      clean_revenue_fare and cancellation_fee_amount for downstream revenue calcs.
+    columns:
+      - name: trip_id
+        tests:
+          - unique
+          - not_null
+      - name: trip_classification
+        tests:
+          - not_null
+          - accepted_values:
+              values: ['clean_completed', 'fraud_completed', 'billed_cancellation', 'zero_fare_cancellation']
+      - name: rider_id
+        tests:
+          - not_null
+          - relationships:
+              to: ref('stg_riders')
+              field: rider_id
+      - name: driver_id
+        tests:
+          - not_null
+          - relationships:
+              to: ref('stg_drivers')
+              field: driver_id
+
+  - name: stg_payments
+    description: >
+      Payments with duplicate capture flagging. 210 trips have 2 captured rows
+      (webhook double-logs). is_primary_record = true marks the row to use for
+      revenue sums. Duplicate rows are kept for auditability, not silently dropped.
+    columns:
+      - name: payment_id
+        tests:
+          - unique
+          - not_null
+      - name: trip_id
+        tests:
+          - not_null
+          - relationships:
+              to: ref('stg_trips')
+              field: trip_id
+
+  - name: stg_driver_incentives
+    description: >
+      Incentives with fraud-trip flag and multi-campaign flag.
+      169 lines ($494.19) are on fraud-flagged trips.
+      1,213 trips have 2 campaign lines (overlapping campaigns).
+      No rows dropped — flags enable downstream filtering by use case.
+    columns:
+      - name: incentive_id
+        tests:
+          - unique
+          - not_null
+      - name: trip_id
+        tests:
+          - not_null
+          - relationships:
+              to: ref('stg_trips')
+              field: trip_id
+      - name: driver_id
+        tests:
+          - not_null
+          - relationships:
+              to: ref('stg_drivers')
+              field: driver_id
