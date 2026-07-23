@@ -1,0 +1,52 @@
+version: 2
+
+models:
+  - name: mart_driver_performance
+    description: "One row per driver. Incentive totals reconcile to the raw payouts ledger."
+    columns:
+      - name: driver_id
+        tests:
+          - unique
+          - not_null
+    tests:
+      - dbt_utils.expression_is_true:
+          expression: "completion_rate_pct between 0 and 100"
+          config:
+            severity: error
+      - dbt_utils.expression_is_true:
+          expression: "total_incentive_paid_usd >= 0"
+          config:
+            severity: error
+
+  - name: mart_rider_activity
+    description: "One row per rider. Four active-rider definitions side by side."
+    columns:
+      - name: rider_id
+        tests:
+          - unique
+          - not_null
+    tests:
+      - dbt_utils.expression_is_true:
+          expression: "completed_trips <= total_trips_requested"
+          config:
+            severity: error
+      - dbt_utils.expression_is_true:
+          expression: "clean_completed_trips <= completed_trips"
+          config:
+            severity: error
+
+  - name: mart_marketplace_kpis
+    description: "Monthly marketplace KPIs and the GMV-to-net reconciliation bridge."
+    tests:
+      - dbt_utils.expression_is_true:
+          expression: "gmv_usd >= net_revenue_usd"
+          config:
+            severity: error
+      - dbt_utils.expression_is_true:
+          expression: "fraud_rate_pct between 0 and 100"
+          config:
+            severity: error
+      - dbt_utils.expression_is_true:
+          expression: "round(gmv_usd - net_revenue_usd, 2) = round(gmv_to_net_gap_usd, 2)"
+          config:
+            severity: error
