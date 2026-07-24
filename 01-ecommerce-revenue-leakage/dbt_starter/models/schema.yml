@@ -1,0 +1,49 @@
+version: 2
+
+models:
+  - name: stg_orders
+    columns:
+      - name: order_id
+        tests: [unique, not_null]
+  - name: stg_payments
+    columns:
+      - name: payment_id
+        tests: [unique, not_null]
+  - name: stg_refunds
+    columns:
+      - name: refund_id
+        tests: [unique, not_null]
+  - name: stg_shipping
+    columns:
+      - name: shipment_id
+        tests: [unique, not_null]
+
+  - name: int_orders_enriched
+    columns:
+      - name: order_id
+        tests: [unique, not_null]
+      - name: revenue_classification
+        tests:
+          - not_null
+          - accepted_values:
+              values: ['recognized','paid_but_cancelled','paid_fully_refunded','cancelled_unpaid','unpaid_open']
+    tests:
+      - dbt_utils.expression_is_true:
+          expression: "net_revenue_usd <= captured_usd"
+      - dbt_utils.expression_is_true:
+          expression: "refund_usd >= 0"
+
+  - name: mart_revenue
+    columns:
+      - name: order_id
+        tests: [unique, not_null]
+    tests:
+      - dbt_utils.expression_is_true:
+          expression: "order_amount_usd >= 0"
+
+  - name: mart_monthly_revenue
+    tests:
+      - dbt_utils.expression_is_true:
+          expression: "gross_bookings_usd >= net_revenue_usd"
+      - dbt_utils.expression_is_true:
+          expression: "captured_cash_usd >= 0"
