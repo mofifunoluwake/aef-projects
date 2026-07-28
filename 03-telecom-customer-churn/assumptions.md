@@ -1,7 +1,7 @@
 # Assumptions Log — Telecom Customer Churn
 
 **Client:** Northwind Cellular
-**Consultant:** Analytics Engineering Fellow
+**Consultant:** Joy Rereloluwa Ogunmodede
 **Date:** July 2026
 **Dataset:** 10,000 subscribers, seed 42. Fixed observation date: 2024-12-31.
 

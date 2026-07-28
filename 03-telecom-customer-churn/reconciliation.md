@@ -1,8 +1,9 @@
 # Reconciliation Write-Up — Three Churn Definitions
 
 **Client:** Northwind Cellular
-**The question:** Marketing, Billing, and Network each report a different churn rate to
-the CEO. Which one is right?
+**Consultant:** Joy Rereloluwa Ogunmodede
+**Date:** July 2026
+**The question:** Marketing, Billing, and Network each report a different churn rate to the CEO. Which one is right?
 
 ---
 
