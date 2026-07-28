@@ -1,0 +1,49 @@
+version: 2
+
+models:
+  - name: stg_subscribers
+    columns:
+      - name: subscriber_id
+        tests: [unique, not_null]
+  - name: stg_plans
+    columns:
+      - name: plan_code
+        tests: [unique, not_null]
+  - name: stg_usage
+    columns:
+      - name: usage_id
+        tests: [unique, not_null]
+  - name: stg_payments
+    columns:
+      - name: payment_id
+        tests: [unique, not_null]
+  - name: stg_support_tickets
+    columns:
+      - name: ticket_id
+        tests: [unique, not_null]
+
+  - name: int_subscriber_signals
+    columns:
+      - name: subscriber_id
+        tests: [unique, not_null]
+
+  - name: mart_subscriber_churn
+    columns:
+      - name: subscriber_id
+        tests: [unique, not_null]
+      - name: churn_type
+        tests:
+          - accepted_values:
+              values: ['voluntary','involuntary','ported_out','not_cancelled']
+    tests:
+      - dbt_utils.expression_is_true:
+          expression: "usage_events_30d >= 0"
+      - dbt_utils.expression_is_true:
+          expression: "past_due_periods >= 0"
+
+  - name: mart_churn_summary
+    tests:
+      - dbt_utils.expression_is_true:
+          expression: "churned_any >= churned_all_three"
+      - dbt_utils.expression_is_true:
+          expression: "total_subscribers = 10000"
