@@ -86,11 +86,13 @@ Documents what changed, what was added, and why.
 
 ## Intermediate + Marts
 
-| Model | Grain | Purpose |
-|---|---|---|
-| int_orders_enriched | 1 row/order | Joins all 4 staging models; derives revenue_classification + net_revenue_usd |
-| mart_revenue | 1 row/order | Finance-ready order-grain fact table |
-| mart_monthly_revenue | 1 row/month | Bookings-to-net reconciliation bridge (12 months) |
+| Model | Grain | Purpose | Key derived fields |
+|---|---|---|---|
+| int_orders_enriched | 1 row/order | Joins all 4 staging models; classifies each order's revenue state | revenue_classification, net_revenue_usd, is_paid, is_fully_refunded, had_duplicate_charge |
+| mart_revenue | 1 row/order | Finance-ready order-grain fact table | order_amount_usd, captured_usd, refund_usd, net_revenue_usd |
+| mart_monthly_revenue | 1 row/month | Bookings-to-net reconciliation bridge (12 months) | gross_bookings_usd, cancelled_unpaid_usd, paid_but_cancelled_usd, duplicate_charge_exposure_usd, refunds_usd, net_revenue_usd, bookings_to_net_gap_usd, gap_pct |
 
 **revenue_classification values:** recognized, paid_but_cancelled, paid_fully_refunded,
 cancelled_unpaid, unpaid_open.
+
+**Lineage:** 4 raw sources → 4 staging views → int_orders_enriched → (mart_revenue, mart_monthly_revenue).

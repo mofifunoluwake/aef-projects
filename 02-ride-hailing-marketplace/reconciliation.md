@@ -1,9 +1,23 @@
 # Reconciliation Write-Up — GMV to Net Revenue Bridge
 
+**Client:** Cobalt Mobility
+**Date:** July 2026
+**Dataset:** 15,000 trips, seed 42, Jan–Dec 2024. Reporting currency: USD (GBP × 1.27).
+
+**Consultant:** Joy Rereloluwa Ogunmodede
+
+**The question:** GMV (Growth's number) runs 8–12% higher than net revenue (Finance's
+number) every month, by a moving amount. The COO needs one defensible figure before a
+fundraise.
+
+---
+
 ## Executive summary
 
-Cobalt Mobility's GMV runs 6–7% higher than net revenue, varying by month. This
-write-up walks the bridge line by line using validated, reconciled data.
+Cobalt Mobility's GMV runs 6–7% higher than net revenue in this dataset, varying by month.
+This write-up walks the bridge line by line using validated, reconciled data. Every monthly
+gap ties to the penny (GAP_TIES = PASS across all 12 months), and captured cash reconciles
+exactly to the deduped payment ledger.
 
 **Full-year totals (Jan–Dec 2024, all amounts USD at 1 GBP = 1.27):**
 
@@ -11,24 +25,34 @@ write-up walks the bridge line by line using validated, reconciled data.
 |---|---|---|
 | **GMV (Growth's number)** | **$198,425.04** | Sum of all gross fares across all trips with a fare |
 | Less: fraud fare reversals | ($5,762.15) | 395 completed trips later flagged as fraud |
-| **= Revenue after fraud** | **$192,662.89** | What Finance considers the starting point |
+| **= Revenue after fraud** | **$192,662.89** | Finance's starting point |
 | = Captured cash (deduped) | $192,662.89 | Actual money collected, after removing 210 duplicate captures |
-| Less: processor fees | (~varies by month) | Payment processor takes a cut |
+| Less: processor fees | (varies by month) | Payment processor's cut |
 | **= Net revenue** | **~$185,000** | What hits the P&L |
 
-**The gap explained:**
-The 6–7% monthly gap between GMV and net revenue is driven by three factors:
-1. **Fraud reversals** — 395 trips (3.15% of completed) are flagged after the fact. Their fares sit in GMV but are reversed from net revenue.
+---
+
+## The gap explained
+
+The monthly gap between GMV and net revenue is driven by three factors:
+
+1. **Fraud reversals** — 395 trips (3.15% of completed) are flagged after the fact. Their
+   fares sit in GMV but reverse out of net revenue.
 2. **Processor fees** — every captured payment has a processing cost deducted.
-3. **Billed cancellation classification** — 1,056 cancelled trips still have a fare. Whether these are "GMV" or "fee revenue" shifts the gap by ~1%.
+3. **Billed cancellation classification** — 1,056 cancelled trips still carry a fare.
+   Whether these count as "GMV" or "fee revenue" shifts the gap by ~1%.
 
 **What the gap is NOT:**
-- It is not duplicate captures — those 210 double-logged payments are deduped before revenue is calculated. Without dedup, revenue would be overstated, not understated.
-- It is not incentive spend — incentives are a cost line, not a revenue adjustment. They affect margin, not the GMV-to-net bridge.
+- Not duplicate captures — the 210 double-logged payments are deduped before revenue is
+  calculated. Without dedup, revenue would be *overstated*, not understated.
+- Not incentive spend — incentives are a cost line affecting margin, not a GMV-to-net
+  revenue adjustment.
+
+---
 
 ## The bridge, month by month
 
-Every month shows GAP_TIES = PASS, meaning GMV minus net revenue equals the stated gap to the penny.
+Every month shows GAP_TIES = PASS: GMV minus net revenue equals the stated gap to the penny.
 
 | Month | GMV | Net Revenue | Gap | Gap % |
 |---|---|---|---|---|
@@ -44,9 +68,11 @@ Every month shows GAP_TIES = PASS, meaning GMV minus net revenue equals the stat
 The gap percentage moves month to month because fraud rates and cancellation volumes
 fluctuate, but it consistently lands in the 6–7.4% range.
 
+---
+
 ## Incentive exposure (separate from the bridge)
 
-Total incentive spend: $17,144.71 (reconciles to the raw payouts ledger to the penny).
+Total incentive spend: **$17,144.71**, reconciling to the raw payouts ledger to the penny.
 
 | Category | Amount | Notes |
 |---|---|---|
@@ -54,34 +80,33 @@ Total incentive spend: $17,144.71 (reconciles to the raw payouts ledger to the p
 | Fraud trip incentives | $494.19 | 169 lines — paid on trips later flagged fraud |
 | Multi-campaign overlap | $3,578.42 | 1,213 trips qualifying for 2 campaigns |
 
-Fraud trip incentives are surfaced as an exposure, not clawed back. Per Driver Ops:
+Fraud trip incentives are surfaced as an exposure, not clawed back — per Driver Ops,
 driver payout history is sacred and cannot be silently restated.
-
-## Data quality issues surfaced
-
-| Issue | Impact | Recommendation |
-|---|---|---|
-| 210 duplicate captures | Would overstate revenue ~$2,800 if not deduped | Fix webhook dedup at source |
-| 30 re-onboarded drivers | Would inflate driver count by 4% | Assign new DRIVER_IDs on re-onboarding |
-| 169 incentives on fraud trips | $494 in unrecoverable cost | Add fraud check before payout |
-| Timestamp corruption (Python 3.14 + connector) | All dates loaded incorrectly | Pin connector version or validate timestamps |
 
 ---
 
-# Business Metric Definitions
+## Data quality issues surfaced (for the client to fix at source)
 
-Each metric below has one definition. Stakeholders may disagree — that is expected.
-The mart exposes the inputs for alternative calculations; the definitions below are
-the recommended defaults for investor reporting.
+| Issue | Count | Recommendation |
+|---|---|---|
+| Duplicate captures (webhook) | 210 trips | Fix webhook dedup at ingestion |
+| Re-onboarded drivers (ID reuse) | 30 drivers | Assign new DRIVER_IDs on re-onboarding |
+| Incentives on fraud trips | 169 lines ($494) | Add fraud check before payout |
+| Timestamp corruption (Py 3.14 + connector) | all | Pin connector version / validate timestamps |
 
-| Metric | Definition | Source model | Why this definition |
-|---|---|---|---|
-| **GMV** | Sum of gross_fare_usd for all trips where gross_fare > 0 | mart_marketplace_kpis.gmv_usd | Includes completed + billed cancellations. Excludes zero-fare cancellations. Matches Growth's headline. |
-| **Net revenue** | Captured cash (deduped) minus processor fees | mart_marketplace_kpis.net_revenue_usd | Only money actually collected and retained. Fraud fares excluded via dedup + reversal. |
-| **Take rate** | Net revenue / GMV × 100 | mart_marketplace_kpis.take_rate_pct | Industry-standard marketplace efficiency metric. |
-| **Active rider** | Completed ≥1 non-fraud trip in trailing 30 days from latest data date | mart_rider_activity.is_active_clean_30d | Strictest defensible count. Other definitions available in same table. |
-| **Completion rate** | Completed trips / total trips × 100 | mart_driver_performance.completion_rate_pct | Per-driver. Includes fraud-flagged completions (they did complete). |
-| **Fraud rate** | Fraud-flagged trips / completed trips × 100 | mart_marketplace_kpis.fraud_rate_pct | Denominator is completed trips only (fraud doesn't apply to cancellations). |
-| **Cancellation rate** | Cancelled trips / total trips × 100 | Derived from mart_marketplace_kpis | All cancellation types combined. |
-| **Incentive spend** | Sum of all bonus_amount_usd from the payouts ledger | mart_driver_performance.total_incentive_paid_usd | Includes both campaign lines on overlapping trips. Reconciles to raw ledger. |
-| **Reporting currency** | USD | All _usd columns | GBP converted at fixed 1.27 rate. |
+---
+
+## What I fixed vs what the client must fix
+
+**Fixed in the pipeline:** duplicate-capture dedup, driver re-onboarding dedup, currency
+normalization (USD via fixed GBP × 1.27), trip classification, fraud-reversal logic,
+incentive de-duplication across overlapping campaigns, and the timestamp-corruption reload.
+
+**Client must fix at source:** the webhook double-logging, the DRIVER_ID reuse on
+re-onboarding, and the fraud-check-before-payout gap. These are upstream problems the
+warehouse can flag and correct for in reporting, but only the source systems can cure.
+
+---
+
+*Metric definitions for every headline number are maintained separately in
+`metric_definitions.md`.*

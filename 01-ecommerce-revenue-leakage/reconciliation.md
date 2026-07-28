@@ -1,6 +1,12 @@
 # Reconciliation Write-Up — Bookings to Net Revenue
 
 **Client:** Lumen & Loom
+
+**Date:** July 2026
+**Dataset:** 10,000 orders, seed 42, 2024. Reporting currency: USD.
+
+**Consultant:** Joy Rereloluwa Ogunmodede
+
 **The question:** Finance and Operations report revenue numbers that differ by 8–12% each
 month. The board wants one source of truth.
 
@@ -77,9 +83,9 @@ and refund timing all fluctuate.
 
 ## What I fixed vs what the client must fix
 
-**Fixed in the pipeline:** duplicate-charge dedup, currency normalization, revenue
-classification, refund netting, invalid-timestamp flagging.
+**Fixed in the pipeline:** duplicate-charge dedup, currency normalization (USD via fixed
+GBP×1.27 / EUR×1.08), revenue classification, refund netting, invalid-timestamp flagging.
 
-**Client must fix at source:** the webhook double-logging, the carrier timestamp gaps,
-and the order-status-vs-fulfilment desync. These are upstream data-generation problems the
+**Client must fix at source:** the webhook double-logging, the carrier timestamp gaps, and
+the order-status-vs-fulfilment desync. These are upstream data-generation problems the
 warehouse can flag but not cure.

@@ -1,7 +1,7 @@
 # Assumptions Log — E-Commerce Revenue Leakage
 
 **Client:** Lumen & Loom
-**Consultant:** Analytics Engineering Fellow
+**Consultant:** Joy Rereloluwa Ogunmodede
 **Date:** July 2026
 **Dataset:** 10,000 orders, seed 42, 2024. Reporting currency: USD.
 

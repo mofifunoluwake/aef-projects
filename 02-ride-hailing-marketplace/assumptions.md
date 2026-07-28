@@ -1,6 +1,6 @@
 # Assumptions Log — Ride-Hailing Marketplace Engagement
 
-**Consultant:** Analytics Engineering Fellow
+**Consultant:** Joy Rereloluwa Ogunmodede
 **Client:** Cobalt Mobility
 **Date:** July 2026
 **Dataset:** 15,000 trips, seed 42, Jan–Dec 2024
