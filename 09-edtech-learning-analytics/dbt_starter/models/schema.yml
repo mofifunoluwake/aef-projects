@@ -1,0 +1,45 @@
+version: 2
+
+models:
+  - name: stg_courses
+    columns:
+      - name: course_id
+        tests: [unique, not_null]
+  - name: stg_students
+    columns:
+      - name: enrollment_id
+        tests: [unique, not_null]
+  - name: stg_lessons
+    columns:
+      - name: lesson_event_id
+        tests: [unique, not_null]
+  - name: stg_assessments
+    columns:
+      - name: assessment_attempt_id
+        tests: [unique, not_null]
+
+  - name: int_enrollment_progress
+    columns:
+      - name: enrollment_id
+        tests: [unique, not_null]
+
+  - name: mart_enrollment_completion
+    columns:
+      - name: enrollment_id
+        tests: [unique, not_null]
+      - name: completion_category
+        tests:
+          - accepted_values:
+              values: ['passed_exam','sat_failed_exam','finished_lessons_no_exam','incomplete','other']
+    tests:
+      - dbt_utils.expression_is_true:
+          expression: "lessons_completed <= lesson_count"
+      - dbt_utils.expression_is_true:
+          expression: "pct_lessons_completed >= 0"
+
+  - name: mart_completion_summary
+    tests:
+      - dbt_utils.expression_is_true:
+          expression: "complete_all_lessons <= complete_80pct_lessons"
+      - dbt_utils.expression_is_true:
+          expression: "total_people <= total_enrollments"
